@@ -76,3 +76,5 @@ tramp
 # cask packages
 .cask/
 
+#Haskell Stack
+.stack-work
