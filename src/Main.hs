@@ -7,7 +7,6 @@ import Web.Twitter.Conduit hiding (map)
 import Common
 
 import Control.Applicative
-import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Environment
@@ -15,10 +14,32 @@ import System.Environment
 import Diagrams.Prelude
 import Diagrams.Backend.SVG.CmdLine
 
+import Data.List 
 
+--createBox e rh = (text (show e) <> (rect e rh)) # fontSize (local rh)
 
-example :: Diagram B
-example = rect 100 100
+generateGraph :: (Eq a) => [a] -> [a] -> Diagram B
+generateGraph following followers = 
+  (text (show left) <> (rect left rh)) # fontSize (local rh)
+  ||| (text (show middle) <> (rect middle rh)) # fontSize (local rh)
+  ||| (text (show right) <> (rect right rh)) # fontSize (local rh)
+  where 
+    left = fromIntegral (length (following \\ followers))
+    right = fromIntegral (length (followers \\ following))
+    middle = fromIntegral (length (intersect following followers))
+    rh = (flip (/) 10 . sum . map (fromIntegral . length)) [following, followers]
+
+--example :: Diagram B
+--example = 
+--  (text (show left)) <> (rect left rh) # fc red
+--  ||| (text (show middle)) <> rect middle rh # fc blue
+--  ||| (text (show right) <> rect right rh) # fc green
+--  where 
+--    left = fromIntegral (length ([1..10]))
+--    right = fromIntegral (length ([1..5]))
+--    middle = fromIntegral (length ([1..3]))
+--    rh = (flip (/) 10 . sum . map (fromIntegral . length)) [[1..5], [1..6]]
+--text (show (fromIntegral (length [1..5]))) <> rect 8 1
 --example = (rect following rh) ||| (rect followers rh) ||| (rect b rh)
 
 main :: IO ()
@@ -35,67 +56,6 @@ main = do
   followersIds <- fmap contents (call twInfo mgr $ followersIds (ScreenNameParam "2016rshah"))
   putStrLn ("Following: " ++ show (length followingIds))
   putStrLn ("Followers: " ++ show (length followersIds))
-  mainWith (example)
+  mainWith (generateGraph followingIds followersIds)
+  --mainWith (example)
   putStrLn "Success!"
-
---{-# LANGUAGE OverloadedStrings #-}
---{-# LANGUAGE FlexibleContexts #-}
-
---module Main where
-
---import Common
-
---import Web.Twitter.Conduit
---import Web.Twitter.Types.Lens
-
---import Control.Lens
---import qualified Data.ByteString.Char8 as B8
---import qualified Data.Conduit as C
---import qualified Data.Conduit.List as CL
---import qualified Data.Text as T
---import qualified Data.Text.IO as T
---import System.IO (hFlush, stdout)
---import qualified Web.Authenticate.OAuth as OA
-
---tokens :: OAuth
---tokens = twitterOAuth
---    { oauthConsumerKey = "yKIgsYdYIeOh5ShQd2hgnAfss"
---    , oauthConsumerSecret = "bqlUSsRQTI4vcNQGyjd1DlTrv3l06qAbctcuiWkhkTMnUdCEyo"
---    }
-
---authorize :: OAuth -- ^ OAuth Consumer key and secret
---          -> (String -> IO String) -- ^ PIN prompt
---          -> Manager
---          -> IO Credential
---authorize oauth getPIN mgr = do
---    cred <- OA.getTemporaryCredential oauth mgr
---    let url = OA.authorizeUrl oauth cred
---    pin <- getPIN url
---    putStrLn pin
---    OA.getAccessToken oauth (OA.insert "oauth_verifier" (B8.pack pin) cred) mgr
-
---getTWInfo :: Manager -> IO TWInfo
---getTWInfo mgr = do
---    cred <- authorize tokens getPIN mgr
---    return $ setCredential tokens cred def
---  where
---    getPIN url = do
---        putStrLn $ "browse URL: " ++ url
---        putStr "> what was the PIN twitter provided you with? "
---        hFlush stdout
---        getLine
-
---main :: IO ()
---main = do
---    mgr <- newManager tlsManagerSettings
---    twInfo <- getTWInfo mgr
---    putStrLn $ "# your home timeline (up to 800 tweets):"
---    sourceWithMaxId twInfo mgr (homeTimeline & count ?~ 200)
---        C.$= CL.isolate 800
---        C.$$ CL.mapM_ $ \status -> do
---            T.putStrLn $ T.concat [ T.pack . show $ status ^. statusId
---                                  , ": "
---                                  , status ^. statusUser . userScreenName
---                                  , ": "
---                                  , status ^. statusText
---                                  ]
